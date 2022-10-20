@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  khipo-db:
+    image: postgres:latest
+    container_name: khipo-db
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_DB: khipo-db
+      POSTGRES_PASSWORD: 'postgres'
