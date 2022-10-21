@@ -1,9 +1,4 @@
-import {
-  HttpException,
-  HttpStatus,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Knex } from 'knex';
 import { InjectModel } from 'nest-knexjs';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -14,18 +9,16 @@ export class ProductsService {
   constructor(@InjectModel() private readonly knex: Knex) {}
 
   async create(createProductDto: CreateProductDto) {
-    try {
-      const products = await this.knex.table('products').insert({
+    const products = await this.knex
+      .table('products')
+      .insert({
         name: createProductDto.name,
         price: createProductDto.price,
         brand: createProductDto.brand,
         image: createProductDto.image,
-      });
-
-      return { products };
-    } catch (err) {
-      throw new HttpException(err, HttpStatus.BAD_REQUEST);
-    }
+      })
+      .returning('*');
+    return { product: products[0] };
   }
 
   async findAll() {
@@ -34,40 +27,39 @@ export class ProductsService {
   }
 
   async findOne(productId: number) {
-    if (!productId) {
-      throw new NotFoundException(`Product ${productId} does not exist`);
-    }
-    const products = await this.knex.table('products').where('id', productId);
+    const products = await this.knex
+      .table('products')
+      .where('id', productId)
+      .first();
+    if (!products) throw new NotFoundException();
     return { products };
   }
 
   async update(productId: number, updateProductDto: UpdateProductDto) {
+    const products = await this.knex
+      .table('products')
+      .where('id', productId)
+      .update({
+        name: updateProductDto.name,
+        price: updateProductDto.price,
+        brand: updateProductDto.brand,
+        image: updateProductDto.image,
+        updated_at: this.knex.fn.now(),
+      })
+      .returning('*');
+    if (products.length === 0) throw new NotFoundException();
+    return { product: products[0] };
+  }
+
+  async remove(productId: number) {
     try {
       const products = await this.knex
         .table('products')
         .where('id', productId)
-        .update({
-          name: updateProductDto.name,
-          price: updateProductDto.price,
-          brand: updateProductDto.brand,
-          image: updateProductDto.image,
-          updated_at: this.knex.fn.now(),
-        });
-
+        .del();
       return { products };
     } catch (err) {
-      throw new HttpException(err, HttpStatus.BAD_REQUEST);
+      throw new NotFoundException(err.message);
     }
-  }
-
-  async remove(productId: number) {
-    if (!productId) {
-      throw new NotFoundException(`Product ${productId} does not exist`);
-    }
-    const products = await this.knex
-      .table('products')
-      .where('id', productId)
-      .del();
-    return { products };
   }
 }
