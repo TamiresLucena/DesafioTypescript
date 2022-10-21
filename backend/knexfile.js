@@ -1,11 +1,10 @@
-import { configuration } from './src/config/configuration';
-
 module.exports = {
-  ...configuration().database,
-  migrations: {
-    directory: `${__dirname}/src/database/migrations`,
-  },
-  seeds: {
-    directory: `${__dirname}/src/database/seeds`,
+  client: 'pg',
+  connection: {
+    host: 'localhost',
+    port: 5432,
+    database: 'khipo-db',
+    user: 'postgres',
+    password: 'postgres',
   },
 };
