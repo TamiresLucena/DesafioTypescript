@@ -1,15 +1,24 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  CACHE_MANAGER,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Knex } from 'knex';
 import { InjectModel } from 'nest-knexjs';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class ProductsService {
-  constructor(@InjectModel() private readonly knex: Knex) {}
+  constructor(
+    @InjectModel() private readonly knex: Knex,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   async create(createProductDto: CreateProductDto) {
-    const products = await this.knex
+    const [product] = await this.knex
       .table('products')
       .insert({
         name: createProductDto.name,
@@ -18,7 +27,8 @@ export class ProductsService {
         image: createProductDto.image,
       })
       .returning('*');
-    return { product: products[0] };
+    await this.cacheManager.set(product.id.toString(), product);
+    return { product };
   }
 
   async findAll() {
@@ -27,16 +37,22 @@ export class ProductsService {
   }
 
   async findOne(productId: number) {
-    const products = await this.knex
+    const value = await this.cacheManager.get(productId.toString());
+    if (value) return value;
+
+    const product = await this.knex
       .table('products')
       .where('id', productId)
       .first();
-    if (!products) throw new NotFoundException();
-    return { products };
+    if (!product) throw new NotFoundException();
+
+    await this.cacheManager.set(productId.toString(), product);
+
+    return { product };
   }
 
   async update(productId: number, updateProductDto: UpdateProductDto) {
-    const products = await this.knex
+    const [product] = await this.knex
       .table('products')
       .where('id', productId)
       .update({
@@ -47,19 +63,24 @@ export class ProductsService {
         updated_at: this.knex.fn.now(),
       })
       .returning('*');
-    if (products.length === 0) throw new NotFoundException();
-    return { product: products[0] };
+    if (!product) throw new NotFoundException();
+
+    await this.cacheManager.set(productId.toString(), product);
+
+    return { product };
   }
 
   async remove(productId: number) {
-    try {
-      const products = await this.knex
-        .table('products')
-        .where('id', productId)
-        .del();
-      return { products };
-    } catch (err) {
-      throw new NotFoundException(err.message);
-    }
+    const [product] = await this.knex
+      .table('products')
+      .where('id', productId)
+      .del()
+      .returning('*');
+
+    if (!product) throw new NotFoundException();
+
+    await this.cacheManager.del(productId.toString());
+
+    return { product };
   }
 }
