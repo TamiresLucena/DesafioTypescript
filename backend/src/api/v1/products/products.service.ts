@@ -38,7 +38,7 @@ export class ProductsService {
 
   async findOne(productId: number) {
     const value = await this.cacheManager.get(productId.toString());
-    if (value) return value;
+    if (value) return { product: value };
 
     const product = await this.knex
       .table('products')

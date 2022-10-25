@@ -10,5 +10,5 @@ export const configuration = () => ({
       password: process.env.DB_PASSWORD,
     },
   },
-  port: parseInt(process.env.PORT, 10) || 3000,
+  port: parseInt(process.env.PORT, 10) || 3333,
 });
